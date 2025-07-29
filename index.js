@@ -18,6 +18,9 @@ class Vec {
         if (crossProduct < 0) return 1; // Point is on the right side of the line
         return 0; // Point is on the line
     }
+    static vector(p1, p2) { // p1 -> p2
+        return { x: p2.x - p1.x, y: p2.y - p1.y };
+    }
 }
 
 class Point {
@@ -133,7 +136,6 @@ class Line {
     }
     moveTo(p) { view.moveTo(p.x, p.y); }
     lineTo(p) { view.lineTo(p.x, p.y); }
-    // Method to check if a point is on the line segment
 }
 
 class Mouse {
@@ -152,7 +154,6 @@ class Mouse {
     static #select(e) { for (const o of Mouse.#objects) o.select?.({ x: e.clientX, y: e.clientY }); }
     static #unselect() { for (const o of Mouse.#objects) o.unselect?.(); }
 }
-
 
 // calculate the point of intersection between two lines defined by two points each
 function intersection(p1, p2, p3, p4) {
@@ -239,7 +240,6 @@ class Intersect {
     }
 }
 
-
 // calculate if a point is inside the bounds of the canvas
 function visible(p) {
     return (p.x >= 0 && p.x <= view.canvas.width && p.y >= 0 && p.y <= view.canvas.height);
@@ -268,6 +268,7 @@ function draw() {
     let { distance, clp } = shortestDistanceToLine(p1, p2, point);
     let closestPoint = closestPt(point, line);
 
+    // draw dashed line between line and closest point to line
     view.beginPath();
     view.setLineDash([5, 5]); // Dashed line
     view.strokeStyle = 'blue';
@@ -277,13 +278,14 @@ function draw() {
     view.setLineDash([]); // Reset to solid line
     view.closePath();
 
-    for (const drawable of drawables) {
-        drawable.draw();
-    }
+    for (const drawable of drawables) drawable.draw();
 
+    // write status text
     view.fillStyle = 'black';
     view.fillText(`Distance: ${distance.toFixed(2)}`, closestPoint.x + 20, closestPoint.y + 20);
     view.fillText(`Closest Point: (${closestPoint.x.toFixed(2)}, ${closestPoint.y.toFixed(2)})`, closestPoint.x + 20, closestPoint.y + 40);
+    
+    // draw point at closest point on line
     view.beginPath();
     view.arc(closestPoint.x, closestPoint.y, 5, 0, Math.PI * 2);
     view.fillStyle = 'purple';
@@ -294,6 +296,7 @@ function draw() {
     view.closePath();
 
 
+    // draw points projected onto line by arrow
     const cp1 = closestPt(arrow.p1, line);
     const cp2 = closestPt(arrow.p2, line);
     if (visible(cp1)) {
@@ -303,6 +306,7 @@ function draw() {
         circle(cp2.x, cp2.y, 5, 'pink');
     }
 
+    // draw point projected on normal to line by arrow
     const inter = intersect(arrow, line);
     if (inter && visible(inter)) {
         const interN = Vec.add(inter, line.normal);
@@ -314,8 +318,18 @@ function draw() {
         if (visible(cn2)) {
             circle(cn2.x, cn2.y, 5, 'lime');
         }
-    }
 
+        // calc reflection
+        const paraVec = Vec.vector(cp2, cp1);
+        const normVec = Vec.vector(cn1, cn2); // reverse for reflection
+        const reflectVec = Vec.add(paraVec, normVec);
+        drawVector(inter, reflectVec);
+
+    }
+}
+function drawVector(p, v) {
+    const p2 = Vec.add(p, v);
+    drawArrow(p2.x, p2.y, p.x, p.y)
 }
 // draw circle with black border and fill with color
 function circle(x, y, r, color = 'red') {
@@ -392,6 +406,7 @@ class Arrow {
             return;
         }
     }
+    get length() { return Math.hypot(p1.x - p2.x, p1.y - p2.y); }
 }
 const dist = (p1, p2) => Math.hypot(p2.x - p1.x, p2.y - p1.y);
 const near = (p1, p2, r = 20) => dist(p1, p2) <= r;
